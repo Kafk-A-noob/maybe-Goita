@@ -1,4 +1,4 @@
-# maybe-Goita - 
+# maybe-Goita -
 ## ChangeLog
   ・2025/12/5リポジトリを作成
  ### What's a goita? - 能登発祥の対戦型テーブルゲーム
