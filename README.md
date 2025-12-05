@@ -3,7 +3,6 @@
   ・2025/12/5リポジトリを作成
  ### What's a goita? - 能登発祥の対戦型テーブルゲーム
 
-[![GitHub Pages Status](https://github.com/kafk-a-noob/maybe-Goita/actions/workflows/deploy.yml/badge.svg)](https://github.com/kafk-a-noob/maybe-Goita/actions/workflows/deploy.yml)
 
 ###  概要
 
