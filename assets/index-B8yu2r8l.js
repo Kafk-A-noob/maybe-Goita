@@ -1,0 +1,71 @@
+(function(){const e=document.createElement("link").relList;if(e&&e.supports&&e.supports("modulepreload"))return;for(const n of document.querySelectorAll('link[rel="modulepreload"]'))s(n);new MutationObserver(n=>{for(const i of n)if(i.type==="childList")for(const r of i.addedNodes)r.tagName==="LINK"&&r.rel==="modulepreload"&&s(r)}).observe(document,{childList:!0,subtree:!0});function t(n){const i={};return n.integrity&&(i.integrity=n.integrity),n.referrerPolicy&&(i.referrerPolicy=n.referrerPolicy),n.crossOrigin==="use-credentials"?i.credentials="include":n.crossOrigin==="anonymous"?i.credentials="omit":i.credentials="same-origin",i}function s(n){if(n.ep)return;n.ep=!0;const i=t(n);fetch(n.href,i)}})();const d={KING:"王",rook:"飛",bishop:"角",gold:"金",silver:"銀",knight:"馬",lance:"香",pawn:"し"},u={[d.KING]:2,[d.rook]:2,[d.bishop]:2,[d.gold]:4,[d.silver]:4,[d.knight]:4,[d.lance]:4,[d.pawn]:10},m=[0,1,2,3];class p{constructor(e,t){this.type=e,this.id=t,this.faceUp=!1}flip(){this.faceUp=!this.faceUp}}class f{constructor(e,t=!1){this.id=e,this.isHuman=t,this.hand=[],this.team=e%2}setHand(e){this.hand=e}removeCard(e){this.hand=this.hand.filter(t=>t.id!==e.id)}hasCard(e){return this.hand.some(t=>t.type===e)}decideAction(e){return this.isHuman?null:new Promise(t=>{setTimeout(()=>{t(this._aiLogic(e))},1e3)})}_aiLogic(e){const{currentAttack:t}=e;if(t){const s=t.card.type,n=this.hand.filter(i=>i.type===s||i.type===d.KING&&s!==d.pawn&&s!==d.lance);if(n.length>0){const i=n[0],r=this.hand.filter(a=>a.id!==i.id);if(r.length>0){const a=Math.floor(Math.random()*r.length);return{action:"playTurn",card1:i,card2:r[a]}}}return{action:"pass"}}else if(this.hand.length>=2){const s=Math.floor(Math.random()*this.hand.length);let n=Math.floor(Math.random()*this.hand.length);for(;s===n;)n=Math.floor(Math.random()*this.hand.length);return{action:"playTurn",card1:this.hand[s],card2:this.hand[n]}}else return{action:"pass"}}}class y{constructor(e){this.renderer=e,this.players=m.map(t=>new f(t,t===0)),this.deck=[],this.turnPlayerIndex=0,this.currentAttack=null,this.passCount=0,this.gameOver=!1,this.teamScores=[0,0],this.roundCount=1}start(){this.initDeck(),this.deal(),this.renderer.render(this),this.renderer.log(`=== ラウンド ${this.roundCount} 開始 ===`),this.nextTurn()}nextRound(e){this.roundCount++,this.gameOver=!1,this.turnPlayerIndex=e,this.currentAttack=null,this.passCount=0,this.renderer.clearField(),this.initDeck(),this.deal(),this.renderer.render(this),this.renderer.log(`=== ラウンド ${this.roundCount} 開始 ===`),this.nextTurn()}initDeck(){this.deck=[];let e=0;for(const[t,s]of Object.entries(u))for(let n=0;n<s;n++)this.deck.push(new p(t,e++));for(let t=this.deck.length-1;t>0;t--){const s=Math.floor(Math.random()*(t+1));[this.deck[t],this.deck[s]]=[this.deck[s],this.deck[t]]}}deal(){this.players.forEach(e=>{e.setHand(this.deck.splice(0,8))})}async nextTurn(){if(this.gameOver)return;const e=this.players[this.turnPlayerIndex];this.renderer.highlightPlayer(this.turnPlayerIndex);const t=await e.decideAction({currentAttack:this.currentAttack,history:[]});if(!t&&e.isHuman){this.renderer.enableControls(!0,this.currentAttack);return}t&&this.processAction(e,t)}async handleHumanAction(e){const t=this.players[0];if(this.turnPlayerIndex!==0)return;const s=await this.processAction(t,e);if(!s.valid){alert(s.reason);return}this.renderer.enableControls(!1)}async processAction(e,t){if(t.action==="pass"){if(!this.currentAttack)return{valid:!1,reason:"攻めの手番ではパスできません"};if(this.passCount++,this.renderer.log(`プレイヤー ${e.id}: なし`),this.passCount>=3){const s=this.currentAttack.playerIndex;this.finishTrick(s)}else this.turnPlayerIndex=(this.turnPlayerIndex+1)%4,this.nextTurn();return{valid:!0}}if(t.action==="playTurn"){const{card1:s,card2:n}=t;if(!s||!n)return{valid:!1,reason:"カードを2枚選んでください"};if(this.currentAttack){const i=this.currentAttack.card.type,r=s.type;let a=i===r;if(!a&&r===d.KING&&i!==d.pawn&&i!==d.lance&&(a=!0),!a)return{valid:!1,reason:"そのカードでは受けられません"};e.removeCard(s),e.removeCard(n),this.renderer.log(`プレイヤー ${e.id} 受け・攻め: ${s.type} -> ${n.type}`),this.renderer.showPlay(e.id,s,n,!1),this.renderer.render(this),this.currentAttack={playerIndex:e.id,card:n},this.passCount=0;const o=s.type===n.type,l=await this.checkWin(e,o);return!this.gameOver&&!l&&(this.turnPlayerIndex=(this.turnPlayerIndex+1)%4,this.nextTurn()),{valid:!0}}else{e.removeCard(s),e.removeCard(n),this.renderer.log(`プレイヤー ${e.id} 攻め: [伏せ] -> ${n.type}`),this.renderer.showPlay(e.id,s,n,!0),this.renderer.render(this),this.currentAttack={playerIndex:e.id,card:n},this.passCount=0;const i=await this.checkWin(e);return!this.gameOver&&!i&&(this.turnPlayerIndex=(this.turnPlayerIndex+1)%4,this.nextTurn()),{valid:!0}}}}finishTrick(e){this.renderer.log(`全員パス。プレイヤー ${e} が再攻撃します。`),this.currentAttack=null,this.passCount=0,this.turnPlayerIndex=e,this.renderer.render(this),this.nextTurn()}async checkWin(e,t=!1){if(e.hand.length===0){let s=30;return this.currentAttack&&this.currentAttack.playerIndex===e.id&&(s={王:50,飛:40,角:40,金:30,銀:30,馬:20,香:20,し:10}[this.currentAttack.card.type]||30),t&&(s*=2,this.renderer.log("ダブル得点！ (同種受け攻め)")),this.teamScores[e.id%2]+=s,this.renderer.updateScores(this.teamScores),this.renderer.log(`ラウンド終了！ 勝者: プレイヤー ${e.id} (+${s})`),this.teamScores.some(n=>n>=150)?(this.gameOver=!0,this.renderer.showRoundResult(e.id,s,!0)):this.renderer.showRoundResult(e.id,s,!1),!0}return!1}}class v{constructor(e){this.container=e,this.selectedCards=[],this.playerNames={0:"あなた",1:"CPU 左",2:"CPU 対面",3:"CPU 右"},this.setupStartScreen()}setupStartScreen(){this.container.innerHTML=`
+        <div id="start-screen" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--wood-light);">
+            <h1 style="font-size:3em; margin-bottom:20px; text-shadow:2px 2px 4px black;">May be ごいた</h1>
+            <div style="background:rgba(0,0,0,0.5); padding:30px; border-radius:15px; text-align:center; border:2px solid var(--wood-dark);">
+                <label style="font-size:1.2em; display:block; margin-bottom:10px;">プレイヤー名</label>
+                <input type="text" id="input-player-name" placeholder="名前を入力" style="padding:10px; font-size:1.2em; border-radius:5px; border:none; width:200px; text-align:center;">
+                <br><br>
+                <button id="btn-start-game" style="font-size:1.5em; padding:10px 40px;">ゲーム開始</button>
+            </div>
+        </div>
+      `;const e=document.getElementById("btn-start-game"),t=document.getElementById("input-player-name");e.onclick=()=>{const s=t.value.trim();s?(this.playerNames[0]=s,this.setupGameUI(),window.game&&window.game.start()):alert("名前を入力してください")}}setupGameUI(){this.container.innerHTML=`
+          <div id="game-board">
+            <div id="center-info">
+                 <div class="score-board">
+                    <div class="team-score team-0">チームA (<span id="name-0-score">${this.playerNames[0]}</span>): <span id="score-0">0</span></div>
+                    <div class="team-score team-1">チームB (CPU): <span id="score-1">0</span></div>
+                 </div>
+                 <div id="turn-info" style="margin-top: 10px; background: rgba(0,0,0,0.6); color: white; padding: 5px 10px; border-radius: 4px;">準備中...</div>
+                 <div id="log-short"></div>
+            </div>
+
+            <div id="result-modal" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); background:rgba(0,0,0,0.9); color:white; padding:20px; border-radius:10px; z-index:200; text-align:center; min-width:300px; border: 2px solid #d4a76a;">
+                <h2 id="result-title">ラウンド終了</h2>
+                <div id="result-msg" style="margin:20px 0; font-size:1.2em;"></div>
+                <button id="btn-next-round">次のラウンドへ</button>
+            </div>
+
+            <!-- Player Areas with Name Tags -->
+            <div id="player-2" class="player-area player-top team-0">
+                 <div class="name-tag">${this.playerNames[2]}</div>
+                 <div class="field-area">
+                     <div class="row-receive"></div>
+                     <div class="row-attack"></div>
+                 </div>
+                 <div class="hand"></div>
+                 <div class="status-bubble"></div>
+            </div>
+            <div id="player-3" class="player-area player-right team-1">
+                 <div class="name-tag">${this.playerNames[3]}</div>
+                 <div class="field-area">
+                     <div class="row-receive"></div>
+                     <div class="row-attack"></div>
+                 </div>
+                 <div class="hand"></div>
+                 <div class="status-bubble"></div>
+            </div>
+            <div id="player-1" class="player-area player-left team-1">
+                 <div class="name-tag">${this.playerNames[1]}</div>
+                 <div class="field-area">
+                     <div class="row-receive"></div>
+                     <div class="row-attack"></div>
+                 </div>
+                 <div class="hand"></div>
+                 <div class="status-bubble"></div>
+            </div>
+            <div id="player-0" class="player-area player-bottom team-0">
+                 <div class="field-area">
+                     <div class="row-receive"></div>
+                     <div class="row-attack"></div>
+                 </div>
+                 <div class="hand"></div>
+                 <div class="status-bubble"></div>
+                 <div class="name-tag" style="margin-top:5px;">${this.playerNames[0]}</div>
+            </div>
+          </div>
+
+          <div id="controls">
+             <button id="btn-pass">なし (パス)</button>
+             <button id="btn-action">決定</button>
+          </div>
+    `,document.getElementById("btn-pass").onclick=()=>window.game.handleHumanAction({action:"pass"}),document.getElementById("btn-action").onclick=()=>this.submitAction(),document.getElementById("btn-next-round").onclick=()=>{document.getElementById("result-modal").style.display="none",this.nextRoundCallback&&this.nextRoundCallback()}}render(e){if(!document.getElementById("player-0"))return;e.players.forEach(s=>this.renderHand(s)),e.teamScores&&this.updateScores(e.teamScores);const t=document.getElementById("turn-info");if(e.gameOver)t.textContent="ゲーム終了";else{const s=e.turnPlayerIndex,n=this.playerNames[s],i=s===0;let r="";e.currentAttack?i?(r=`あなたの番: 受け [${e.currentAttack.card.type}]`,t.style.color="#e74c3c"):(r=`${n} の番 (受け: ${e.currentAttack.card.type})`,t.style.color="#ffffff"):i?(r="あなたの番: 攻め (Lead)",t.style.color="#00ff00"):(r=`${n} の番 (攻め)`,t.style.color="#ffffff"),t.textContent=r}this.updateControls(e)}updateControls(e){const t=document.getElementById("btn-action");if(!t)return;const s=e.turnPlayerIndex===0&&!e.gameOver,n=document.getElementById("btn-pass");n.disabled=!s,!e.currentAttack&&s&&(n.disabled=!0),t.disabled=!s,s&&(e.currentAttack?t.textContent="受けて攻める":t.textContent="攻める")}enableControls(e){const t=document.getElementById("btn-action"),s=document.getElementById("btn-pass");t&&(e?(t.disabled=!1,s.disabled=!1):(t.disabled=!0,s.disabled=!0))}renderHand(e){const t=`player-${e.id}`,s=this.container.querySelector(`#${t}`);if(!s)return;const n=s.querySelector(".hand");n.innerHTML="",e.hand.forEach(i=>{const r=document.createElement("div");r.className="card",e.isHuman?(r.textContent=i.type,r.onclick=()=>this.toggleSelect(i,r),r.ondblclick=()=>this.handleDoubleClick(i,r)):r.classList.add("hidden"),this.selectedCards.find(a=>a.id===i.id)&&r.classList.add("selected"),n.appendChild(r)})}toggleSelect(e,t){if(this.selectedCards.some(s=>s.id===e.id))this.selectedCards=this.selectedCards.filter(s=>s.id!==e.id),t.classList.remove("selected");else{if(this.selectedCards.length>=2)return;this.selectedCards.push(e),t.classList.add("selected")}}handleDoubleClick(e,t){const s=window.game;if(s.turnPlayerIndex===0&&!s.gameOver){if(this.selectedCards.length===1&&!this.selectedCards.some(n=>n.id===e.id)){this.selectedCards.push(e),t.classList.add("selected"),this.submitAction();return}this.selectedCards.length===0&&this.toggleSelect(e,t)}}submitAction(){if(this.selectedCards.length!==2){alert("カードを2枚選択してください (受け・攻め、または伏せ・攻め)");return}window.game.handleHumanAction({action:"playTurn",card1:this.selectedCards[0],card2:this.selectedCards[1]}),this.selectedCards=[]}showPlay(e,t,s,n){const i=this.container.querySelector(`#player-${e}`);if(!i)return;const r=i.querySelector(".row-receive"),a=i.querySelector(".row-attack"),o=document.createElement("div");o.className="card small",n?(o.classList.add("hidden"),o.classList.add("lead-hidden")):o.textContent=t.type;const l=document.createElement("div");l.className="card small",l.textContent=s.type,r.appendChild(o),a.appendChild(l);const h=n?"攻":"受・攻";this.showBubble(e,`${h}: ${s.type}`)}showBubble(e,t){const s=this.container.querySelector(`#player-${e} .status-bubble`);s&&(s.textContent=t,s.classList.add("show"),setTimeout(()=>s.classList.remove("show"),2e3))}updateScores(e){const t=document.getElementById("score-0"),s=document.getElementById("score-1");t&&(t.textContent=e[0]),s&&(s.textContent=e[1])}showRoundResult(e,t,s){const n=document.getElementById("result-modal"),i=document.getElementById("result-title"),r=document.getElementById("result-msg"),a=document.getElementById("btn-next-round"),o=e%2===0?"チームA (あなた/味方)":"チームB (相手)",l=s?"勝負あり！":"ラウンド終了";i.textContent=l,r.innerHTML=`勝者: プレイヤー ${e} (${o})<br>得点: +${t}`,s?(a.textContent="リロードして再開",this.nextRoundCallback=()=>location.reload()):(a.textContent="次のラウンドへ",this.nextRoundCallback=()=>window.game.nextRound(e)),n.style.display="block"}clearField(){this.container.querySelectorAll(".row-receive, .row-attack").forEach(t=>t.innerHTML="")}log(e){const t=document.getElementById("log-short");t&&(t.textContent=e,t.style.opacity=1,setTimeout(()=>t.style.opacity=0,3e3)),console.log(e)}highlightPlayer(e){this.container.querySelectorAll(".player-area").forEach(n=>n.style.filter="brightness(0.7)");const s=this.container.querySelector(`#player-${e}`);s&&(s.style.filter="brightness(1.0)")}}document.addEventListener("DOMContentLoaded",()=>{const c=document.getElementById("game-container"),e=new v(c),t=new y(e);window.game=t});
