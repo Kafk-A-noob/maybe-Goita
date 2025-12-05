@@ -14,7 +14,7 @@
 
 以下のURLからすぐにプレイできます。特別なインストールは不要です。
 
-** [ゲームをプレイする](https://kafk-a-noob.github.io/maybe-Goita/)**
+ [ゲームをプレイする](https://kafk-a-noob.github.io/maybe-Goita/)
 
 ---
 
